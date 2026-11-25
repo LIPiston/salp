@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 
+import 'windows_agent_pipe.dart';
+
 /// OpenSSH agent protocol, one bounded request per local socket connection.
 /// Agent forwarding is intentionally separate; this only signs local auth.
 class DesktopSshAgent {
@@ -15,8 +17,11 @@ class DesktopSshAgent {
   Future<Uint8List> _request(Uint8List payload) async {
     authorize();
     if (Platform.isAndroid) throw UnsupportedError('Android 不提供桌面 ssh-agent');
+    if (payload.isEmpty || payload.length > _limit) {
+      throw StateError('ssh-agent 请求长度无效');
+    }
     if (Platform.isWindows) {
-      throw UnsupportedError('Windows ssh-agent 命名管道尚未接入');
+      return windowsAgentRequest(path, payload, authorize);
     }
     if (path.isEmpty) throw StateError('未找到 SSH_AUTH_SOCK，请启动 ssh-agent 并加载密钥');
     final socket = await Socket.connect(

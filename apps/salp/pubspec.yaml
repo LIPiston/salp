@@ -17,6 +17,8 @@ dependencies:
     path: third_party/dartssh2
   pointycastle: 4.0.0
   ffi: ^2.2.0
+  win32: 6.4.0
+  xml: 7.1.0
   path: 1.9.1
   flutter_secure_storage: ^11.2.0
   path_provider: ^2.1.6
