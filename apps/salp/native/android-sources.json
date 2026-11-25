@@ -1,0 +1,42 @@
+{
+  "abi": "arm64-v8a",
+  "api": 24,
+  "ndk": "28.2.13676358",
+  "sources": [
+    {
+      "name": "FreeRDP",
+      "version": "3.33.1",
+      "folder": "FreeRDP-3.33.1",
+      "archive": "freerdp-3.33.1.tar.gz",
+      "url": "https://codeload.github.com/FreeRDP/FreeRDP/tar.gz/refs/tags/3.33.1",
+      "sha256": "6b6da1e7217f924b033da6896e70eb4c4a447c3900d03c0d10179062f0a7d495",
+      "license": "LICENSE"
+    },
+    {
+      "name": "OpenSSL",
+      "version": "4.0.1",
+      "folder": "openssl-4.0.1",
+      "archive": "openssl-4.0.1.tar.gz",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-4.0.1/openssl-4.0.1.tar.gz",
+      "sha256": "2db3f3a0d6ea4b59e1f094ace2c8cd536dffb87cdc39084c5afa1e6f7f37dd09",
+      "license": "LICENSE.txt"
+    }
+  ],
+  "patches": {
+    "native/patches/android-private-path.patch": "c3649246accd3e2b3e0c2694634584b9a3bbbf913e639ba801171c906cb2f649"
+  },
+  "libraries": {
+    "libfreerdp3.so": {
+      "bytes": 7411088,
+      "sha256": "a41532dfc8f289138c0fd936d78145d4db373230611fbfac45029559f96a89a2"
+    },
+    "libwinpr3.so": {
+      "bytes": 6486536,
+      "sha256": "937dc4e45aeb78b4c9f13d4061effe44aaddc8d3dc963bbf85cae5af541162f2"
+    },
+    "libsalp_rdp.so": {
+      "bytes": 388064,
+      "sha256": "f487e288889bfb9d395b0b87d02234cbe95232e8df326fd18a817ebb5a515900"
+    }
+  }
+}

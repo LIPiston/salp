@@ -1,0 +1,39 @@
+name: salp
+description: "Cross-platform SSH and remote access workbench."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  collection: ^1.19.1
+  flutter:
+    sdk: flutter
+  material_ui: ^1.1.0
+  xterm:
+    path: third_party/xterm
+  dartssh2:
+    path: third_party/dartssh2
+  pointycastle: 4.0.0
+  ffi: ^2.2.0
+  path: 1.9.1
+  flutter_secure_storage: ^11.2.0
+  path_provider: ^2.1.6
+  file_picker: ^13.4.1
+  flutter_pty: ^0.4.2
+  dart_mosh:
+    path: third_party/dart_mosh
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/licenses/FreeRDP.txt
+    - assets/licenses/OpenSSL.txt

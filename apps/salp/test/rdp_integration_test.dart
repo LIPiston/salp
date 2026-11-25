@@ -1,0 +1,75 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:salp/core/host.dart';
+import 'package:salp/core/repository.dart';
+import 'package:salp/core/rdp.dart';
+
+void main() {
+  test(
+    'Dart RDP session receives native framebuffer and preserves lock and close lifecycle',
+    () async {
+      final folder = await Directory.systemTemp.createTemp('salp-dart-rdp-');
+      final repo = Repository(folder, Uint8List(32));
+      var certificates = 0;
+      final session = RdpSession(
+        Host(
+          id: 'rdp',
+          name: 'fixture',
+          address: '127.0.0.1',
+          port: int.parse(Platform.environment['SALP_RDP_PORT']!),
+          username: 'fixture',
+          protocol: Protocol.rdp,
+        ),
+        verifyCertificate: (details) async {
+          certificates++;
+          expect(details, isNotEmpty);
+          return true;
+        },
+      );
+      try {
+        await session.open(
+          repo,
+          (_, _, _, _) async => false,
+          (_) async => null,
+        );
+        final deadline = DateTime.now().add(const Duration(seconds: 20));
+        while (session.frame == null &&
+            session.error == null &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        expect(session.connected, true, reason: session.error);
+        expect(session.frame?.length, 1280 * 720 * 4);
+        expect(certificates, 1);
+        // A shortcut must be sent as physical scan codes, while committed
+        // Unicode text (including a supplementary-plane character) uses UTF-16.
+        session.key(0xffe3, true);
+        session.key(0x63, true);
+        session.key(0x63, false);
+        session.key(0xffe3, false);
+        session.key(0x0101f600, true);
+        session.key(0x0101f600, false);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        session.setLocked(true);
+        final frame = session.frame;
+        session.key(97, true);
+        session.pointer(10, 10, 1);
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        expect(identical(frame, session.frame), true);
+        session.setLocked(false);
+        session.key(97, false);
+        session.pointer(10, 10, 0);
+      } finally {
+        await session.close();
+        await folder.delete(recursive: true);
+      }
+      expect(session.connected, false);
+      expect(session.frame, isNull);
+    },
+    skip: Platform.environment['SALP_RDP_PORT'] == null
+        ? 'Run tool/verify_rdp.py'
+        : false,
+  );
+}

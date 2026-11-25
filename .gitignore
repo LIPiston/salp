@@ -1,0 +1,9 @@
+# Build output, caches and local evidence.
+/target
+**/target/
+/.cache
+/.ryugi/evidence
+*.log
+
+# Windows CI toolchains and binary dependency caches.
+/.ci/

@@ -1,0 +1,102 @@
+name: Windows portable build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apps/salp/**'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'apps/salp/**'
+      - '.github/workflows/windows.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      VCPKG_DISABLE_METRICS: '1'
+      VCPKG_MAX_CONCURRENCY: '2'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Checkout pinned Flutter
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: flutter/flutter
+          ref: ae9b586f34a8443573f82ef57c3bf914a908cbf7 # 3.50.1
+          path: .ci/flutter
+          persist-credentials: false
+      - name: Checkout pinned vcpkg
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: microsoft/vcpkg
+          ref: 7281d8d64321f945f296e696d8561f68c8186c67
+          path: .ci/vcpkg
+          persist-credentials: false
+      - name: Cache Flutter artifacts and pub
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            .ci/flutter/bin/cache
+            .ci/pub-cache
+          key: windows-2022-flutter-ae9b586f34a8443573f82ef57c3bf914a908cbf7-${{ hashFiles('apps/salp/pubspec.lock') }}
+      - name: Cache native release packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .ci/vcpkg-cache
+          key: windows-2022-native-${{ hashFiles('apps/salp/native/windows/**') }}
+      - name: Initialize tools
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Keep the immutable checkout and give Flutter its exact version tag.
+          git -C .ci/flutter fetch --depth 1 origin tag 3.50.1
+          if ($LASTEXITCODE -ne 0) { throw 'Flutter tag fetch failed' }
+          $FlutterTag = (git -C .ci/flutter rev-parse refs/tags/3.50.1).Trim()
+          if ($FlutterTag -ne 'ae9b586f34a8443573f82ef57c3bf914a908cbf7') { throw 'Flutter tag moved' }
+          "$env:GITHUB_WORKSPACE/.ci/flutter/bin" >> $env:GITHUB_PATH
+          "PUB_CACHE=$env:GITHUB_WORKSPACE/.ci/pub-cache" >> $env:GITHUB_ENV
+          "VCPKG_DOWNLOADS=$env:GITHUB_WORKSPACE/.ci/downloads" >> $env:GITHUB_ENV
+          "VCPKG_BINARY_SOURCES=clear;files,$env:GITHUB_WORKSPACE/.ci/vcpkg-cache,readwrite" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force .ci/vcpkg-cache, .ci/downloads | Out-Null
+          & .ci/flutter/bin/flutter.bat config --no-analytics --enable-windows-desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Flutter configuration failed' }
+          & .ci/flutter/bin/flutter.bat precache --windows
+          if ($LASTEXITCODE -ne 0) { throw 'Flutter precache failed' }
+      - name: Build, test and check portable bundle
+        run: |
+          & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg 2>&1 |
+            Tee-Object -FilePath windows-build.log
+      - name: Upload portable development build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: salp-windows-x64-${{ github.run_number }}
+          path: .ci/native/salp-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-diagnostics-${{ github.run_number }}
+          path: |
+            windows-build.log
+            .ci/native/salp-windows-x64/build-info.json
+            .ci/native/salp-windows-x64/windows-smoke.json
+            .ci/vcpkg/buildtrees/**/*.log
+          if-no-files-found: warn
+          retention-days: 14
