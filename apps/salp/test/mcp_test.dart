@@ -11,7 +11,7 @@ import 'package:salp/core/mcp.dart';
 import 'package:salp/core/session_log.dart';
 
 void main() {
-  test('MCP refuses actions after its active audit file is removed', () async {
+  test('MCP audit removal is blocked by Windows or stops actions on POSIX', () async {
     final dir = await Directory.systemTemp.createTemp(
       'salp-mcp-audit-removed-',
     );
@@ -36,7 +36,14 @@ void main() {
       final file = (await Directory(
         '${dir.path}/mcp-audit',
       ).list().toList()).single;
-      await file.delete();
+      if (Platform.isWindows) {
+        // Windows refuses unlink while Dart's writer handle is open. Prove the
+        // file remains protected and the next action is still durably audited.
+        await expectLater(file.delete(), throwsA(isA<FileSystemException>()));
+        expect(await file.exists(), true);
+      } else {
+        await file.delete();
+      }
       final request = await http.postUrl(Uri.parse(server.url));
       request.headers.set('authorization', 'Bearer ${agent.token}');
       request.write(
@@ -53,8 +60,19 @@ void main() {
       final result = jsonDecode(
         await utf8.decoder.bind(await request.close()).join(),
       ) as Map;
-      expect(result['error'], isNotNull);
-      expect(opened, 0);
+      if (Platform.isWindows) {
+        expect(result['error'], isNull);
+        expect(opened, 1);
+        await server.close();
+        final audit = await SessionLog.read(File(file.path), repo.key);
+        expect(
+          audit.any((row) => (row['text'] as String).contains('terminal_open')),
+          true,
+        );
+      } else {
+        expect(result['error'], isNotNull);
+        expect(opened, 0);
+      }
     } finally {
       http.close(force: true);
       await server.close();

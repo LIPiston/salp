@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,25 @@ void main() {
     () async {
       final folder = await Directory.systemTemp.createTemp('salp-dart-rdp-');
       final repo = Repository(folder, Uint8List(32));
+      final sshFixture = Platform.environment['SALP_SSH_FIXTURE'];
+      if (sshFixture != null) {
+        final config = jsonDecode(
+          await File('$sshFixture/public.json').readAsString(),
+        ) as Map<String, dynamic>;
+        final gateway = Host(
+          id: 'jump',
+          name: 'jump',
+          address: '127.0.0.1',
+          port: config['port'] as int,
+          username: config['username'] as String,
+        );
+        repo.hosts.add(gateway);
+        repo.credentials['jump'] = Credential(
+          privateKey: await File('$sshFixture/client_key').readAsString(),
+        );
+        repo.knownHosts[gateway.endpoint] =
+            'ssh-ed25519 ${config['fingerprint']}';
+      }
       var certificates = 0;
       final session = RdpSession(
         Host(
@@ -21,6 +41,7 @@ void main() {
           port: int.parse(Platform.environment['SALP_RDP_PORT']!),
           username: 'fixture',
           protocol: Protocol.rdp,
+          jumpIds: sshFixture == null ? [] : ['jump'],
         ),
         verifyCertificate: (details) async {
           certificates++;

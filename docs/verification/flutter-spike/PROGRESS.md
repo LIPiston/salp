@@ -142,3 +142,11 @@ python3 apps/salp/tool/measure.py android-arm64 python3 tool/run.py flutter buil
 - 真实TigerVNC1.16.2-6 + GTK + OpenSSH测试通过：错误密码拒绝；直连与SSH跳板均640×480、红蓝像素精确；OS键鼠事件到达GTK；锁定时发送的键和点击未到达，解锁后marker正常。仅生产VncSession协议证据，不声称Flutter界面视觉验收。初次GTK继承Wayland导致窗口落在当前桌面，fixture已强制GDK_BACKEND=x11并重跑通过；临时服务均关闭。
 - Android最新正式APK模拟器复验通过，SHA256 0a8e185698224265b6eb64a57443c20b849a9d4a0ae4dca3a57b75080573972a；凭据重启保存、RDP证书/画面/输入/触控通过。仍为x86_64模拟器arm64转译，非真机。
 - 最新普通测试75通过、21个条件跳过；静态分析无问题；真实VNC1通过；FreeRDP样例原生桥接和Dart1通过。Windows脚本检查工具仅解压在隔离目录中，新增占用计入storage.json，不修改系统包。
+
+## 公开仓库与首轮Windows执行
+
+- 已按用户授权用gh创建公开仓库https://github.com/LIPiston/salp，首提交d6a7e2f，仅含Flutter应用/测试/构建工作流/许可证/说明，共368文件；旧Rust源码、密钥、日志、缓存和APK未提交。后续Windows构建修正继续提交同一范围。
+- Windows首轮45548777813实际编译FreeRDP/WinPR和salp_rdp/libserialport成功、静态分析通过；普通测试73通过/22条件跳过/1失败，失败是测试删除活动审计日志在Windows报sharing violation（Windows本身阻止删除），未进入Flutter原生集成/正式包阶段。
+- 测试改为Windows断言删除被系统拒绝、文件保留且下一次动作写入审计；POSIX仍断言成功删除后阻止动作。缓存保存改为即使后续测试失败也保留已完成原生包，减少重复下载编译。下一轮CI是这次修复的Windows证明。
+- RDP新增真实OpenSSH跳板链路：证书、帧、输入及锁定均通过；仍为FreeRDP样例端，不代替Windows/xrdp NLA互通。
+- 本机总增量约10.08GiB（包含已授权SDK/NDK/缓存、模拟器、项目工具），详见本地storage.json。Windows构建发生在GitHub runner，不占本机原生依赖缓存。模拟器验证后已关闭。

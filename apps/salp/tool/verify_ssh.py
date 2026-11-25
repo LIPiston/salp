@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Ephemeral loopback OpenSSH fixture; never touches the user's SSH config."""
-import subprocess, tempfile, pathlib, socket, os, json, time, getpass
+import subprocess, tempfile, pathlib, socket, os, json, time, getpass, sys
 root=pathlib.Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='salp-ssh-') as tmp:
     folder=pathlib.Path(tmp)
@@ -41,7 +41,8 @@ LogLevel ERROR
                 with socket.create_connection(('127.0.0.1',port),timeout=.1):break
             except OSError:time.sleep(.05)
         env=agent_env.copy();env['SALP_SSH_FIXTURE']=tmp
-        result=subprocess.run(['python3',str(root/'tool/run.py'),'flutter','test','--no-pub','test/ssh_integration_test.dart','test/sftp_picker_test.dart','test/mcp_operations_test.dart'],env=env)
+        tests = sys.argv[1:] or ['test/ssh_integration_test.dart', 'test/sftp_picker_test.dart', 'test/mcp_operations_test.dart']
+        result=subprocess.run([sys.executable,str(root/'tool/run.py'),'flutter','test','--no-pub',*tests],env=env)
     finally:
         agent.terminate();agent.wait(timeout=5)
         daemon.terminate()

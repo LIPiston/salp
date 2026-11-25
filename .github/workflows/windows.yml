@@ -49,14 +49,16 @@ jobs:
           path: .ci/vcpkg
           persist-credentials: false
       - name: Cache Flutter artifacts and pub
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        id: flutter-cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             .ci/flutter/bin/cache
             .ci/pub-cache
           key: windows-2022-flutter-ae9b586f34a8443573f82ef57c3bf914a908cbf7-${{ hashFiles('apps/salp/pubspec.lock') }}
       - name: Cache native release packages
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        id: native-cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: .ci/vcpkg-cache
           key: windows-2022-native-${{ hashFiles('apps/salp/native/windows/**') }}
@@ -100,3 +102,18 @@ jobs:
             .ci/vcpkg/buildtrees/**/*.log
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Save native cache even if a later test failed
+        if: always() && steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .ci/vcpkg-cache
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
+      - name: Save Flutter cache even if a later test failed
+        if: always() && steps.flutter-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            .ci/flutter/bin/cache
+            .ci/pub-cache
+          key: ${{ steps.flutter-cache.outputs.cache-primary-key }}

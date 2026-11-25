@@ -87,6 +87,8 @@ with tempfile.TemporaryDirectory(prefix='salp-rdp-') as tmp:
         flutter_env['SALP_RDP_PORT']=str(port)
         flutter_env['LD_LIBRARY_PATH']=str(root/'build/native-rdp')
         subprocess.run(['python3',str(root/'tool/run.py'),'flutter','test','--no-pub','test/rdp_integration_test.dart'],env=flutter_env,check=True)
+        subprocess.run(['python3',str(root/'tool/verify_ssh.py'),'test/rdp_integration_test.dart'],env=flutter_env,check=True)
+        print(json.dumps({'rdp_openssh_jump_frame_certificate_input':True}),flush=True)
         log.flush();log.seek(0);events=log.read().lower()
         assert 'code:0x002e' in events, 'Ctrl-C was not sent as a physical C key'
         assert 'code:0xd83d' in events and 'code:0xde00' in events, 'Supplementary Unicode was lost'
