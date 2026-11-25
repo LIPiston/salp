@@ -79,10 +79,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Flutter configuration failed' }
           & .ci/flutter/bin/flutter.bat precache --windows
           if ($LASTEXITCODE -ne 0) { throw 'Flutter precache failed' }
-      - name: Build, test and check portable bundle
+      - name: Build native dependencies
         run: |
-          & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg 2>&1 |
+          & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg -Stage Native 2>&1 |
             Tee-Object -FilePath windows-build.log
+      - name: Run Windows tests and native app flow
+        run: |
+          & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg -Stage Test 2>&1 |
+            Tee-Object -FilePath windows-build.log -Append
+      - name: Build release and verify portable package
+        run: |
+          & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg -Stage Package 2>&1 |
+            Tee-Object -FilePath windows-build.log -Append
       - name: Upload portable development build
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

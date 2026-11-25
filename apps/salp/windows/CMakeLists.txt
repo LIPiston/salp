@@ -55,6 +55,9 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+# JNI arrives through file_picker's Android dependencies. salp never uses a
+# desktop JVM; discovering the runner's JDK would add a nonportable jvm.dll link.
+set(CMAKE_DISABLE_FIND_PACKAGE_JNI TRUE)
 include(flutter/generated_plugins.cmake)
 
 

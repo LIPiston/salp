@@ -153,3 +153,6 @@ python3 apps/salp/tool/measure.py android-arm64 python3 tool/run.py flutter buil
 
 - Windows第二轮45550131580：审计文件删除保护测试已通过；容量压力测试（上千次真实HTTP+逐条加密flush）超过默认30秒，其他73测试通过。仅该压力测试上限调整为2分钟，继续验证；已保存Flutter和原生二进制缓存。
 - RDP拒绝证书实测不建立桌面；TigerVNC额外10轮直连/SSH跳板交替重连逐轮画面和OS输入通过。普通Linux75通过、22条件跳过。
+
+- Windows第三/四轮普通74通过、23条件跳过，Debug构建通过，原生流程停在PowerShell marker；CRLF尝试未解决。第五轮采集到PowerShell在提示符前退出，插件默认环境缺少SystemRoot等Windows变量；生产openLocal改为Windows显式继承当前环境。第六轮45554894604原生凭据/UI/串口枚举/PowerShell命令/锁定输入阻断通过，Release也编译成功。
+- 第六轮便携DLL加载发现dartjni.dll依赖runner系统Java。JNI来自Android文件选择器的间接依赖，桌面不用JVM；Windows CMake禁用JNI探测，下一轮以隔离DLL加载复验。工作流拆分原生依赖、测试、Release打包三步方便观察。

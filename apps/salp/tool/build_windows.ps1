@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$VcpkgRoot,
+    [ValidateSet('All', 'Native', 'Test', 'Package')][string]$Stage = 'All',
     [string]$WorkRoot = (Join-Path $PSScriptRoot '../../../.ci/native')
 )
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,7 @@ $Packages = Join-Path $WorkRoot 'vcpkg_installed'
 $Triplet = 'x64-windows-release'
 $Manifest = Join-Path $AppRoot 'native/windows'
 New-Item -ItemType Directory -Force $WorkRoot, $Install | Out-Null
+if ($Stage -in 'All', 'Native') {
 $Revision = (& git -C $VcpkgRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $Revision -ne '7281d8d64321f945f296e696d8561f68c8186c67') {
     throw 'vcpkg checkout does not match native/windows/vcpkg.json baseline'
@@ -57,11 +59,15 @@ $Runtime = Get-ChildItem "$VsRoot/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT" -Direc
     Sort-Object FullName -Descending | Select-Object -First 1
 if (!$Runtime) { throw 'App-local MSVC runtime not found' }
 Copy-Item "$($Runtime.FullName)/*.dll" "$Install/bin" -Force
+}
+if ($Stage -eq 'Native') { return }
+$Revision = (& git -C $VcpkgRoot rev-parse HEAD).Trim()
 $env:SALP_WINDOWS_DEPS = $Install
 $env:PATH = "$Install/bin;$env:PATH"
 Push-Location $AppRoot
 try {
     Invoke-Checked 'flutter' @('pub', 'get', '--enforce-lockfile')
+    if ($Stage -in 'All', 'Test') {
     Invoke-Checked 'flutter' @('analyze', '--no-pub')
     Invoke-Checked 'flutter' @('test', '--no-pub', '--reporter', 'expanded')
     $PreviousDataDir = $env:SALP_DATA_DIR
@@ -71,6 +77,8 @@ try {
     } finally {
         $env:SALP_DATA_DIR = $PreviousDataDir
     }
+    }
+    if ($Stage -eq 'Test') { return }
     # Re-resolve plugins for the production entry after integration_test.
     Invoke-Checked 'flutter' @('build', 'windows', '--release')
 } finally { Pop-Location }
