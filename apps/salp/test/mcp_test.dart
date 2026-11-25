@@ -217,6 +217,8 @@ void main() {
         await dir.delete(recursive: true);
       }
     },
+    // Real HTTP + encrypted flush for each row; Windows CI storage is slower.
+    timeout: const Timeout(Duration(minutes: 2)),
   );
 
   test(

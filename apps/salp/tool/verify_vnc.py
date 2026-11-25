@@ -95,7 +95,7 @@ LogLevel ERROR
             'server': 'TigerVNC 1.16.2-6', 'framebuffer': [640, 480],
             'password_rejection': True, 'direct_and_openssh_jump': True,
             'exact_red_blue_pixels': True, 'gtk_keyboard_pointer_events': True,
-            'lock_suppresses_input': True,
+            'lock_suppresses_input': True, 'additional_reconnect_cycles': 10,
             'scope': 'Dart production VncSession against TigerVNC, GTK and OpenSSH; not Flutter desktop-view visual acceptance',
             'events': [json.loads(line) for line in (folder/'events.jsonl').read_text().splitlines()],
         }, indent=2)+'\n')

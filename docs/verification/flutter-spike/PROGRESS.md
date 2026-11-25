@@ -150,3 +150,6 @@ python3 apps/salp/tool/measure.py android-arm64 python3 tool/run.py flutter buil
 - 测试改为Windows断言删除被系统拒绝、文件保留且下一次动作写入审计；POSIX仍断言成功删除后阻止动作。缓存保存改为即使后续测试失败也保留已完成原生包，减少重复下载编译。下一轮CI是这次修复的Windows证明。
 - RDP新增真实OpenSSH跳板链路：证书、帧、输入及锁定均通过；仍为FreeRDP样例端，不代替Windows/xrdp NLA互通。
 - 本机总增量约10.08GiB（包含已授权SDK/NDK/缓存、模拟器、项目工具），详见本地storage.json。Windows构建发生在GitHub runner，不占本机原生依赖缓存。模拟器验证后已关闭。
+
+- Windows第二轮45550131580：审计文件删除保护测试已通过；容量压力测试（上千次真实HTTP+逐条加密flush）超过默认30秒，其他73测试通过。仅该压力测试上限调整为2分钟，继续验证；已保存Flutter和原生二进制缓存。
+- RDP拒绝证书实测不建立桌面；TigerVNC额外10轮直连/SSH跳板交替重连逐轮画面和OS输入通过。普通Linux75通过、22条件跳过。

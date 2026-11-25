@@ -9,6 +9,50 @@ import 'package:salp/core/rdp.dart';
 
 void main() {
   test(
+    'rejecting the actual RDP certificate never establishes a desktop',
+    () async {
+      final folder = await Directory.systemTemp.createTemp('salp-rdp-reject-');
+      final repo = Repository(folder, Uint8List(32));
+      var prompts = 0;
+      final session = RdpSession(
+        Host(
+          id: 'reject',
+          name: 'reject',
+          address: '127.0.0.1',
+          port: int.parse(Platform.environment['SALP_RDP_PORT']!),
+          protocol: Protocol.rdp,
+        ),
+        verifyCertificate: (_) async {
+          prompts++;
+          return false;
+        },
+      );
+      try {
+        await session.open(
+          repo,
+          (_, _, _, _) async => false,
+          (_) async => null,
+        );
+        final deadline = DateTime.now().add(const Duration(seconds: 15));
+        while (session.error == null && DateTime.now().isBefore(deadline)) {
+          expect(session.frame, isNull);
+          expect(session.connected, false);
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        expect(prompts, 1);
+        expect(session.error, isNotNull);
+        expect(session.connected, false);
+        expect(session.frame, isNull);
+      } finally {
+        await session.close();
+        await folder.delete(recursive: true);
+      }
+    },
+    skip: Platform.environment['SALP_RDP_PORT'] == null
+        ? 'Run tool/verify_rdp.py'
+        : false,
+  );
+  test(
     'Dart RDP session receives native framebuffer and preserves lock and close lifecycle',
     () async {
       final folder = await Directory.systemTemp.createTemp('salp-dart-rdp-');

@@ -128,6 +128,30 @@ void main() {
         expect(session.frame, isNull);
         expect(session.connected, false);
       }
+      // Recreate the production session repeatedly; every generation must
+      // receive fresh pixels and deliver its own input, then release transport.
+      for (var cycle = 0; cycle < 10; cycle++) {
+        final session = VncSession(host(cycle.isEven ? [] : ['jump']));
+        final key = 0x66 + cycle;
+        try {
+          await session.open(
+            repo,
+            (_, _, _, _) async => false,
+            (_) async => null,
+          );
+          expect(session.connected, true, reason: session.error);
+          await until(() => session.frame != null || session.error != null);
+          expect(session.error, isNull);
+          expect(session.frame!.length, 640 * 480 * 4);
+          session.key(key, true);
+          session.key(key, false);
+          await until(() => events().any((e) => e['key'] == key));
+        } finally {
+          await session.close();
+        }
+        expect(session.frame, isNull);
+        expect(session.connected, false);
+      }
     },
     skip: fixture == null ? 'Run tool/verify_vnc.py' : false,
     timeout: const Timeout(Duration(seconds: 60)),
