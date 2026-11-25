@@ -65,7 +65,19 @@ void main() {
       await session.send(
         "[IO.File]::WriteAllText(${literal(marker.path)}, ('SALP_' + 'EXECUTED'))\r\n",
       );
-      await until(marker.existsSync);
+      try {
+        await until(marker.existsSync);
+      } catch (_) {
+        // Only this ephemeral CI terminal contains test commands. Capture the
+        // real ConPTY output to diagnose startup/input instead of guessing.
+        debugPrint(
+          'SALP_PTY_STATE: ${session.status}; connected=${session.connected}; error=${session.error}',
+        );
+        debugPrint(
+          'SALP_PTY_OUTPUT: ${jsonEncode(session.terminal.buffer.getText())}',
+        );
+        rethrow;
+      }
       expect(await marker.readAsString(), 'SALP_EXECUTED');
       expect(await blocked.exists(), false);
     } finally {
