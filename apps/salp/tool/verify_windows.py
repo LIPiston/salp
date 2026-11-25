@@ -47,7 +47,7 @@ def verify(bundle: Path):
         with tempfile.TemporaryDirectory(prefix='salp-windows-smoke-') as folder:
             env = os.environ.copy()
             env.update(APPDATA=folder, LOCALAPPDATA=folder, SALP_DATA_DIR=str(Path(folder) / 'vault'),
-                       PATH=str(bundle) + os.pathsep + str(Path(env['SystemRoot']) / 'System32'))
+                       PATH=str(bundle) + os.pathsep + str(Path(env['SYSTEMROOT']) / 'System32'))
             process = subprocess.Popen([str(bundle / 'salp.exe')], cwd=bundle, env=env)
             try:
                 user = ctypes.WinDLL('user32', use_last_error=True)
