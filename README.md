@@ -9,6 +9,6 @@
 - [Windows GitHub Actions 工作流](.github/workflows/windows.yml)
 - [第三方依赖与许可证](apps/salp/THIRD-PARTY.md)
 
-Windows 工作流生成 x64 便携开发包，成功后可从 Actions 下载；Android 当前只构建 arm64 APK。构建缓存、原生二进制和本地测试数据不提交到仓库。旧 Rust 原型不在当前公开源码范围内。
+Windows工作流已生成可下载的x64便携开发包，见[已验证构建](https://github.com/LIPiston/salp/actions/runs/45556813920)（ZIP约19.2MB，解压约45.2MB）；Android 当前只构建 arm64 APK。构建缓存、原生二进制和本地测试数据不提交到仓库。旧 Rust 原型不在当前公开源码范围内。
 
 salp 使用 [GPL-3.0-or-later](LICENSE)。当前开发包未配置正式发布签名。

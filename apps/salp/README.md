@@ -36,17 +36,19 @@ python3 apps/salp/tool/verify_android_lock.py --serial emulator-5580
 
 原生脚本下载固定版本、验证 SHA-256、用两个作业编译并裁剪动态库，输出 `android/app/src/main/jniLibs/arm64-v8a/`。编译缓存、源码与压缩包均复用隔离目录；脚本支持 `--jobs` 和 `--rebuild-openssl`。源码哈希及产物清单见 [native/android-sources.json](native/android-sources.json)。三个库按 16 KiB 页面对齐，OpenSSL 静态链接，未启用设备/音视频重定向。
 
-APK 为 `build/app/outputs/flutter-apk/app-release.apk`，当前使用开发签名。已在 Android36 模拟器通过 arm64转译验证凭据重启保存、RDP证书/画面/键盘/触控、SAF实际文档流与进程死亡恢复、系统锁屏。真实Android设备、第三方文档提供器和Windows/xrdp认证仍待完成，不能当成发布验收。Windows 的 CI 构建入口见下节，尚无成功运行证据。
+APK 为 `build/app/outputs/flutter-apk/app-release.apk`，当前使用开发签名。已在 Android36 模拟器通过 arm64转译验证凭据重启保存、RDP证书/画面/键盘/触控、SAF实际文档流与进程死亡恢复、系统锁屏。真实Android设备、第三方文档提供器和Windows/xrdp认证仍待完成，不能当成发布验收。Windows CI 已完成原生构建和运行检查，下载见下节。
 
 ## Windows x64（GitHub Actions）
 
 仓库推送到 GitHub 后，`.github/workflows/windows.yml` 会在 Flutter 项目变更时运行，也可在 Actions 手动触发。使用 windows-2022 runner，固定 Flutter 3.50.1、vcpkg 提交及原生源码哈希，不需要在你的 Windows 系统安装开发环境。工作流先跑静态分析/测试，再进行原生凭据与PowerShell终端流程，最后构建正式入口并检查便携目录的 DLL 加载和首帧窗口。
 
+已验证的[第9次构建及产物](https://github.com/LIPiston/salp/actions/runs/45556813920)提供约19.2MB ZIP、解压约45.2MB（包括许可和源码）。
+
 成功后下载 `salp-windows-x64-<运行编号>` artifact，解压其中 ZIP 并保留整个目录，运行 `salp.exe`。开发包未签名；`build-info.json` 记录工具/依赖版本与目录体积，`windows-smoke.json` 记录原生加载和启动检查。日志 artifact 保留14天。Windows SSH agent 命名管道仍在开发，桌面锁定/实际RDP服务端/硬件需要后续运行验证。
 
 `tool/build_windows.ps1` 是同一构建入口：Windows 本机构建需要 Visual Studio 2022 C++ 桌面组件、Flutter、Git、Python 和固定版本 vcpkg；工作流提供这些依赖。FreeRDP/WinPR 使用 vcpkg 的3.32.2版本，与Linux/Android当前3.33.1不同，核心API相同但Windows互通仍待CI与实机证明。串口库0.1.2源码和所有原生许可、当前应用源码归档随开发包分发。
 
-工作流已通过 actionlint 和 PowerShell 解析检查，Windows 的最新构建结果以仓库 Actions 为准。这些本地检查不能代替 Windows 编译与运行成功。
+工作流已通过 actionlint 和 PowerShell 解析检查，Windows的最新构建结果以仓库Actions为准。已验证构建d2304d7：74普通测试通过/23条件跳过，原生凭据与PowerShell流程通过，Release便携DLL加载和窗口首帧通过。系统锁屏、实体串口、实际Windows/xrdp远端认证仍待验证。
 
 ## 桌面 MCP
 

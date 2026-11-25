@@ -12,11 +12,11 @@
 - SFTP 字节文件名、不覆盖提交、队列/取消/重试；100文件已逐字节验证；Android SAF 系统文档提供器流式写入、冲突、取消和进程死亡临时文件恢复已实测。
 - 系统密钥库保护本地加密保险库；可选启动验证、主密码、锁定代次。旧终端查询和 SFTP 预览不能在解锁后复活。
 - WebDAV 主密码封装随机数据密钥、AES-GCM 数据加密、Argon2id、强 ETag 条件写入、服务器条件行为探针、三方合并与冲突界面、同步前加密双方备份、主密码封装迁移。
-- OpenSSH 配置导入；不支持的 ProxyCommand/Include 路由整项跳过。WindTerm/NyaTerm JSON 为有限字段导入，真实导出兼容性待核对。
+- OpenSSH 配置导入；不支持的ProxyCommand路由整项跳过；选定目录范围的顶部Include可展开，条件Include仍拒绝。WindTerm/NyaTerm JSON 为有限字段导入，真实导出兼容性待核对。
 - 片段搜索/编辑/预览粘贴；会话日志显式开启、逐条加密、单份 16 MiB、7 天清理、只在本地。
 - 串口 libserialport FFI 与设置界面，已验证枚举/错误处理；实体设备未测试。
 - MCP 本机 HTTP 认证、Host/Origin、agent 范围、专用 SSH/Mosh 标签、逐次/智能/YOLO、精确字节审批、撤销和锁定连续性；真实 MCP→SSH 交互通过。
-- VNC RFB 3.3/3.7/3.8，传统密码认证、Raw/CopyRect/DesktopSize、内嵌画面、键鼠、SSH 跳板。受控协议服务端测试通过，真实 VNC 产品端待测。
+- VNC RFB 3.3/3.7/3.8，传统密码认证、Raw/CopyRect/DesktopSize、内嵌画面、键鼠、SSH 跳板。受控协议测试与真实TigerVNC直连/SSH跳板、OS键鼠及10轮重连通过。
 - Linux RDP FreeRDP 原生桥接，工作线程、TLS/证书确认、内嵌帧、键鼠、SSH 跳板；真实 FreeRDP 示例服务器证书/800×600帧、Dart1280×720帧和锁定/关闭通过。
 - Linux/Windows 系统锁屏通知桥接已写入；Linux 原生 D-Bus 通知→应用锁定和系统解锁已实测。
 
@@ -55,12 +55,12 @@
 
 ## 仍需完成，不得称完整支持
 
-- Android FreeRDP/OpenSSL arm64 已构建打包，只有 arm64 库、API 24+、16 KiB 对齐；模拟器运行已验证，真机与实际 Windows/xrdp 仍待测。Windows 原生编译/打包工作流已准备，云端构建尚未触发，agent 命名管道仍缺。
+- Android FreeRDP/OpenSSL arm64 已构建打包，只有 arm64 库、API 24+、16 KiB 对齐；模拟器运行已验证，真机与实际 Windows/xrdp 仍待测。Windows原生DLL、Debug/Release应用已在Actions编译，凭据/PowerShell集成流程通过；便携DLL加载和首帧启动已通过，agent命名管道仍缺。
 - 终端规则着色已实现（跨换行、中文、ANSI 颜色保留、正则隔离超时）；按主机覆盖/继承已接入并实测保存；实际视觉确认仍待完成。
 - MCP已补结构化exec/SFTP、监听配置和元数据审计；64MiB分块上传和批量移动/删除已接入；覆盖选项仍待补，单块最多64KiB、拒绝覆盖。
 - VNC TigerVNC直连/SSH跳板已通过，Android 真实中文 IME（组合逻辑已有测试，系统英文输入与触控已验证），RDP 真实 Windows/xrdp，远端分辨率主动协商、断线重连压力测试。
 - Android SAF 真机/第三方文档提供器待测；系统文档提供器进程死亡清理已验证；≥100 文件下载已实测；SFTP 超时与关闭已验证，取消压力及符号链接竞态仍待处理。
-- 同步真实WsgiDAV产品端已通过；断电/上传中断；加密备份恢复与撤销已接入并在Linux原生验证；事务持久化已落地，Windows 文件替换仍待实机验证。原子 PUT 依赖服务器规范保证，目前只验证条件响应。
+- 同步真实WsgiDAV产品端已通过；断电/上传中断仍待补；加密备份恢复与撤销已接入并在Linux原生验证；事务持久化已落地，Windows 文件替换仍待实机验证。原子 PUT 依赖服务器规范保证，目前只验证条件响应。
 - 导入Include用户范围展开已加入，条件Include与真实WindTerm/NyaTerm导出格式仍待补；串口配置持久化已完成，硬件证据仍缺。
 - 高级日志脱敏/保留期设置，敏感操作再认证类别开关。
 - Linux 已验证原生 ScreenSaver 信号→应用锁定/系统解锁、系统密钥库→保存→重新读取、系统键盘→PTY。实际桌面锁屏器（含 login1）、全界面布局/输入法、Windows 与 Android 真机运行仍待验证。
@@ -156,3 +156,12 @@ python3 apps/salp/tool/measure.py android-arm64 python3 tool/run.py flutter buil
 
 - Windows第三/四轮普通74通过、23条件跳过，Debug构建通过，原生流程停在PowerShell marker；CRLF尝试未解决。第五轮采集到PowerShell在提示符前退出，插件默认环境缺少SystemRoot等Windows变量；生产openLocal改为Windows显式继承当前环境。第六轮45554894604原生凭据/UI/串口枚举/PowerShell命令/锁定输入阻断通过，Release也编译成功。
 - 第六轮便携DLL加载发现dartjni.dll依赖runner系统Java。JNI来自Android文件选择器的间接依赖，桌面不用JVM；Windows CMake禁用JNI探测，下一轮以隔离DLL加载复验。工作流拆分原生依赖、测试、Release打包三步方便观察。
+
+## Windows首个全绿便携构建
+
+- 公开仓库：https://github.com/LIPiston/salp 。成功run45556813920 / commit d2304d72c4e46858dc250b11892cbe5d93f4323a：https://github.com/LIPiston/salp/actions/runs/45556813920 。第9次触发中有1轮被新提交自动取消，前述故障逐一记录，没有跳过失败门槛。
+- Windows普通测试74通过、23条件跳过；原生界面保存主机→系统安全存储重新读取加密凭据→串口枚举→PowerShell真实文件写入→锁定输入无副作用通过。最终测试使用应用实际的单CR Enter，CRLF尝试已撤回；实质修复为保留Windows运行环境。
+- Release便携包在去除开发工具PATH后加载全部随包DLL、验证RDP导出/串口枚举、启动正式exe并观察Flutter首帧通过。禁用Windows JNI，避免从runner JDK引入jvm.dll依赖。Python环境键使用Windows大写SYSTEMROOT，先前验证脚本大小写错误已修复。
+- ZIP 19186136字节，解压45211046字节（含许可、libserialport完整源码、应用源码归档），SHA256 6e81a6efa7d13c713a021bf3ad9deb0ec580f5ef2a7e0644c3926534d6666345。已下载检查ZIP CRC、文件清单和CI哈希一致，artifact保留14天；不是正式签名发布。
+- Windows运行平台为windows-2022 CI（Windows Server2022），不等价于用户Windows双系统；OS锁屏/系统输入法/文件选择器/Windows ssh-agent/真实RDP端/实体串口仍待完成。窗口首帧检查仅证明启动，原生交互另由integration_test提供。
+- Linux原生流程复验通过；最新Linuxrelease31.041秒，Androidarm64release32.748秒、34728074字节；Android模拟器凭据/RDP再次通过，APK SHA256 348fdc5354b97127085cadd556387420783a1a1b0033592e9d685b30431be997。当前源码普通Linux75通过、22条件跳过，静态分析通过。
