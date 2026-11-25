@@ -70,6 +70,7 @@ try {
     if ($Stage -in 'All', 'Test') {
     Invoke-Checked 'flutter' @('analyze', '--no-pub')
     Invoke-Checked 'flutter' @('test', '--no-pub', '--reporter', 'expanded')
+    Invoke-Checked 'python' @("$PSScriptRoot/verify_windows_agent.py")
     $PreviousDataDir = $env:SALP_DATA_DIR
     $env:SALP_DATA_DIR = Join-Path $WorkRoot ('test-vault-' + [guid]::NewGuid())
     try {
