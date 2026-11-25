@@ -493,6 +493,9 @@ class TerminalSession extends ChangeNotifier {
         Platform.isWindows
             ? 'powershell.exe'
             : (Platform.environment['SHELL'] ?? '/bin/sh'),
+        // flutter_pty's default environment only includes Unix-oriented keys.
+        // PowerShell needs Windows runtime/profile variables such as SystemRoot.
+        environment: Platform.isWindows ? Platform.environment : null,
         columns: terminal.viewWidth,
         rows: terminal.viewHeight,
       );

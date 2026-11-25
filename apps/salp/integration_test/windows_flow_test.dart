@@ -56,6 +56,17 @@ void main() {
       await session.openLocal();
       expect(session.connected, true, reason: session.error);
       session.terminal.resize(113, 37);
+      // Do not race interactive PowerShell startup with its first input.
+      await until(
+        () =>
+            session.terminal.buffer.getText().contains('PS ') ||
+            !session.connected,
+      );
+      expect(
+        session.connected,
+        true,
+        reason: session.terminal.buffer.getText(),
+      );
       session.setLocked(true);
       await session.send(
         "[IO.File]::WriteAllText(${literal(blocked.path)}, 'unexpected')\r\n",
