@@ -69,12 +69,12 @@ void main() {
       );
       session.setLocked(true);
       await session.send(
-        "[IO.File]::WriteAllText(${literal(blocked.path)}, 'unexpected')\r\n",
+        "[IO.File]::WriteAllText(${literal(blocked.path)}, 'unexpected')\r",
       );
       session.setLocked(false);
       // Concatenate two pieces: echoed command text cannot satisfy the marker.
       await session.send(
-        "[IO.File]::WriteAllText(${literal(marker.path)}, ('SALP_' + 'EXECUTED'))\r\n",
+        "[IO.File]::WriteAllText(${literal(marker.path)}, ('SALP_' + 'EXECUTED'))\r",
       );
       try {
         await until(marker.existsSync);
