@@ -2,7 +2,21 @@ name: Windows portable build
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact source commit to build
+        required: false
+        type: string
+        default: ''
+      artifact-name:
+        description: Name of the portable package artifact
+        required: false
+        type: string
+        default: ''
   push:
+    branches-ignore:
+      - nightly
     paths:
       - 'apps/salp/**'
       - '.github/workflows/windows.yml'
@@ -33,6 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - name: Checkout pinned Flutter
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -94,7 +109,7 @@ jobs:
       - name: Upload portable development build
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: salp-windows-x64-${{ github.run_number }}
+          name: ${{ inputs.artifact-name || format('salp-windows-x64-{0}', github.run_number) }}
           path: .ci/native/salp-windows-x64.zip
           if-no-files-found: error
           retention-days: 14
