@@ -146,6 +146,7 @@ def package(bundle, output, version, formats):
         run('flatpak', 'build-finish', root, '--command=salp',
             '--share=network', '--share=ipc', '--socket=wayland', '--socket=fallback-x11',
             '--socket=ssh-auth', '--device=all', '--talk-name=org.freedesktop.secrets',
+            '--talk-name=org.freedesktop.ScreenSaver', '--talk-name=org.gnome.ScreenSaver',
             '--filesystem=home')
         repo = work / 'flatpak-repo'
         run('flatpak', 'build-export', '--disable-sandbox', repo, root, 'nightly')
