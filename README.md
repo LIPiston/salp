@@ -10,8 +10,21 @@
 - [Nightly 预发布工作流](.github/workflows/nightly.yml)
 - [第三方依赖与许可证](apps/salp/THIRD-PARTY.md)
 
-Windows工作流已生成可下载的x64便携开发包，见[已验证构建](https://github.com/LIPiston/salp/actions/runs/45556813920)（ZIP约19.2MB，解压约45.2MB）；Android 当前只构建 arm64 APK。构建缓存、原生二进制和本地测试数据不提交到仓库。旧 Rust 原型不在当前公开源码范围内。
+Windows工作流已生成可下载的x64便携开发包，见[已验证构建](https://github.com/LIPiston/salp/actions/runs/45556813920)（ZIP约19.2MB，解压约45.2MB）。构建缓存、原生二进制和本地测试数据不提交到仓库。旧 Rust 原型不在当前公开源码范围内。
 
-Nightly 每天北京时间 03:17（UTC 19:17，GitHub 调度可能延迟）从 `main` 的最新提交构建 Windows x64 便携包。测试、构建和便携包检查全部通过后，将 `nightly` 分支与固定 `nightly` tag 更新到同一源码提交，并覆盖 [nightly 预发布](https://github.com/LIPiston/salp/releases/tag/nightly)中的 `salp-windows-x64-nightly.zip` 和 `SHA256SUMS`。构建失败时保留上一次成功的预发布。也可在 Actions 的 **Nightly release** 中选择 `main` 手动运行；定时工作流必须保留在默认分支 `main`。`nightly` 分支由工作流维护，不用于独立开发。
+Nightly 每天北京时间 03:17（UTC 19:17，GitHub 调度可能延迟）从 `main` 的同一个提交构建以下产物，发布至固定的 [nightly 预发布](https://github.com/LIPiston/salp/releases/tag/nightly)：
 
-salp 使用 [GPL-3.0-or-later](LICENSE)。当前开发包未配置正式发布签名。
+| 平台 | 附件 |
+| --- | --- |
+| Linux x86_64 / Arch | `salp-linux-x64-nightly.pkg.tar.zst`（pacman） |
+| Linux x86_64 / Debian、Ubuntu | `salp-linux-x64-nightly.deb` |
+| Linux x86_64 / Flatpak | `salp-linux-x64-nightly.flatpak` |
+| Windows x64 | `salp-windows-x64-nightly.zip`、`salp-windows-x64-nightly-setup.exe` |
+| Android ARMv8 | `salp-android-arm64-v8a-nightly.apk` |
+| Android x86_64 | `salp-android-x86_64-nightly.apk` |
+
+全部平台的构建与检查通过后，才将 `nightly` 分支和固定 `nightly` tag 更新到同一源码提交，并覆盖附件与 `SHA256SUMS`；任一构建失败时保留上一次成功的预发布。可在 Actions 的 **Nightly release** 中选择 `main` 手动运行。定时工作流保留在默认分支 `main`，`nightly` 分支由工作流维护，不用于独立开发。
+
+Linux 原生包以 Ubuntu 22.04 / glibc 2.35 为基线，包管理器负责 GTK3、Secret Service 等系统依赖；Flatpak 使用 GNOME 49 runtime。Windows 安装程序按用户安装，无需管理员权限。Android 两种 APK 均包含对应架构的 RDP 原生库，使用 GitHub Secrets 中持久保存的 nightly 专用密钥签名。
+
+salp 使用 [GPL-3.0-or-later](LICENSE)。桌面开发包未配置代码签名。

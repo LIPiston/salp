@@ -1,0 +1,98 @@
+name: Android APKs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SALP_ANDROID_KEYSTORE:
+        required: true
+      SALP_ANDROID_KEYSTORE_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  apks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: ./.github/actions/setup-flutter
+        with:
+          target: android
+      - name: Install Android native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build make perl
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            .ci/android-native
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-native-${{ hashFiles('apps/salp/tool/build_android_rdp.py', 'apps/salp/native/rdp_bridge.cc', 'apps/salp/native/patches/**', 'apps/salp/android/*.kts', 'apps/salp/android/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Prepare stable nightly signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SALP_ANDROID_KEYSTORE }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          mkdir -p .ci/signing
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > .ci/signing/nightly.p12
+          chmod 600 .ci/signing/nightly.p12
+      - name: Build and verify both Android ABIs
+        env:
+          SALP_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SALP_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          export SALP_TOOLCHAIN="$GITHUB_WORKSPACE/.ci/android-native"
+          export SALP_ANDROID_KEYSTORE="$GITHUB_WORKSPACE/.ci/signing/nightly.p12"
+          python3 -m unittest discover -s apps/salp/tool -p 'test_verify_android_package.py'
+          cd apps/salp
+          flutter pub get --enforce-lockfile
+          mkdir -p "$GITHUB_WORKSPACE/.ci/dist"
+          for abi in arm64-v8a x86_64; do
+            python3 tool/build_android_rdp.py --abi "$abi" --jobs 4
+            if [[ "$abi" == arm64-v8a ]]; then target=android-arm64; else target=android-x64; fi
+            flutter build apk --release --target-platform "$target" --split-per-abi \
+              --build-number "$GITHUB_RUN_NUMBER"
+            apk="build/app/outputs/flutter-apk/app-$abi-release.apk"
+            python3 tool/verify_android_package.py "$apk" --abi "$abi"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+            "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$apk"
+            cp "$apk" "$GITHUB_WORKSPACE/.ci/dist/salp-android-$abi-nightly.apk"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: salp-nightly-android
+          path: .ci/dist/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload native diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-diagnostics
+          path: |
+            .ci/android-native/native-build/*.log
+            apps/salp/android/app/src/main/jniLibs/*/salp-native-build.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Remove signing material from the runner
+        if: always()
+        run: rm -f .ci/signing/nightly.p12

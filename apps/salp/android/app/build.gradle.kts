@@ -19,8 +19,9 @@ android {
         applicationId = "dev.salp.salp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        ndk { abiFilters += "arm64-v8a" }
+        minSdk = 24
+        // Flutter selects the ABI via --target-platform and --split-per-abi.
+        // Project-level abiFilters conflict with its split configuration.
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -30,11 +31,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("nightly") {
+            val keystore = System.getenv("SALP_ANDROID_KEYSTORE")
+            if (!keystore.isNullOrBlank()) {
+                storeFile = file(keystore)
+                storePassword = System.getenv("SALP_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = "salp-nightly"
+                keyPassword = System.getenv("SALP_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(
+                if (System.getenv("SALP_ANDROID_KEYSTORE").isNullOrBlank()) "debug" else "nightly"
+            )
         }
     }
 }

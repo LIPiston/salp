@@ -10,7 +10,7 @@
 - FreeRDP / WinPR 3.33.1：Apache-2.0，上游来源 `https://github.com/FreeRDP/FreeRDP/tree/3.33.1`。Android 打包核心协议库；Linux 使用系统动态库。许可文本 `assets/licenses/FreeRDP.txt`。
 - OpenSSL 4.0.1：Apache-2.0，上游来源 `https://github.com/openssl/openssl/tree/openssl-4.0.1`，静态链接到 Android FreeRDP/WinPR 库。许可文本 `assets/licenses/OpenSSL.txt`。
 - FreeRDP/OpenSSL 源码下载地址、SHA-256、Android 产物 SHA-256 由 `tool/build_android_rdp.py` 写入 `native/android-sources.json`。Android WinPR 有一处私有目录适配补丁（`native/patches/android-private-path.patch`，SHA-256 记录在清单）；OpenSSL 未修改，构建选项保留在脚本中。对应压缩包位于隔离工具目录 `native-src`。
-- Linux 的 GTK3、GLib、libsecret、libserialport 及 FreeRDP 的系统依赖由系统动态加载，未复制到当前 Linux bundle。面向其他发行版打包时需再明确依赖安装方式和分发义务。
+- Linux nightly 私有目录包含固定 FreeRDP 3.33.1、Ubuntu 22.04 的 OpenSSL 3 与 libserialport 动态库，并携带许可及 FreeRDP/应用源码。GTK3、GLib、libsecret、libudev 和 zlib 由发行版或 Flatpak runtime 提供；这些系统库不复制到应用目录。直接本地 `flutter build linux` 仍链接本机依赖。
 
 Android APK 仅用于开发验证，尚未配置发布签名；Windows工作流已成功构建/启动开发包；完整公开发布分发清单仍需最终复核。
 

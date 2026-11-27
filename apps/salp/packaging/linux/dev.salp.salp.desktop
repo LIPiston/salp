@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=salp
+Comment=SSH and remote access workbench
+Exec=salp
+Icon=dev.salp.salp
+Terminal=false
+Categories=Network;RemoteAccess;
+StartupWMClass=dev.salp.salp

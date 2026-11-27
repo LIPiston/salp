@@ -39,9 +39,24 @@ jobs:
       ref: ${{ needs.source.outputs.sha }}
       artifact-name: salp-nightly-windows-x64
 
+  linux:
+    name: Build Linux packages
+    needs: source
+    uses: ./.github/workflows/linux.yml
+    with:
+      ref: ${{ needs.source.outputs.sha }}
+
+  android:
+    name: Build Android APKs
+    needs: source
+    uses: ./.github/workflows/android.yml
+    with:
+      ref: ${{ needs.source.outputs.sha }}
+    secrets: inherit
+
   publish:
     name: Update nightly prerelease
-    needs: [source, windows]
+    needs: [source, windows, linux, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -51,10 +66,11 @@ jobs:
       GH_REPO: ${{ github.repository }}
       SOURCE_SHA: ${{ needs.source.outputs.sha }}
     steps:
-      - name: Download the tested portable package
+      - name: Download all tested platform packages
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: salp-nightly-windows-x64
+          pattern: salp-nightly-*
+          merge-multiple: true
           path: dist
       - name: Prepare release assets and notes
         env:
@@ -62,9 +78,19 @@ jobs:
         run: |
           set -euo pipefail
           mv dist/salp-windows-x64.zip dist/salp-windows-x64-nightly.zip
+          for asset in \
+            salp-linux-x64-nightly.deb \
+            salp-linux-x64-nightly.pkg.tar.zst \
+            salp-linux-x64-nightly.flatpak \
+            salp-windows-x64-nightly.zip \
+            salp-windows-x64-nightly-setup.exe \
+            salp-android-arm64-v8a-nightly.apk \
+            salp-android-x86_64-nightly.apk; do
+            test -s "dist/$asset"
+          done
           (
             cd dist
-            sha256sum salp-windows-x64-nightly.zip > SHA256SUMS
+            sha256sum -- *.deb *.pkg.tar.zst *.flatpak *.zip *.exe *.apk > SHA256SUMS
           )
           built_at="$(date -u '+%Y-%m-%d %H:%M UTC')"
           {
@@ -74,9 +100,17 @@ jobs:
             echo "Build time: $built_at"
             echo "Workflow run: $RUN_URL"
             echo
-            echo 'Windows x64 portable development build. Extract the entire ZIP and run salp.exe.'
-            echo 'This unsigned prerelease is updated in place after each successful nightly build.'
-            echo 'The ZIP includes build-info.json, source archives and third-party licenses.'
+            echo '| Platform | Packages |'
+            echo '| --- | --- |'
+            echo '| Linux x86_64 | Debian/Ubuntu .deb, Arch .pkg.tar.zst, Flatpak .flatpak |'
+            echo '| Windows x64 | Portable .zip and per-user -setup.exe installer |'
+            echo '| Android | Separate arm64-v8a (ARMv8) and x86_64 APKs |'
+            echo
+            echo 'This prerelease is updated in place after all nightly platform builds succeed.'
+            echo 'Android APKs use the persistent nightly signing key; desktop packages are not code-signed.'
+            echo 'Linux native packages require glibc 2.35+, GTK 3 and Secret Service; Flatpak uses GNOME 49.'
+            echo 'The Flatpak local terminal runs inside its sandbox.'
+            echo 'Desktop packages include build-info.json, source archives and third-party licenses.'
             echo 'Verify the download using the attached SHA256SUMS file.'
           } > release-notes.md
       - name: Update nightly branch and tag after a successful build
@@ -96,12 +130,12 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view nightly > /dev/null 2>&1; then
-            gh release upload nightly dist/salp-windows-x64-nightly.zip dist/SHA256SUMS --clobber
+            gh release upload nightly dist/* --clobber
             gh release edit nightly \
               --title 'salp nightly' --notes-file release-notes.md \
               --prerelease --latest=false --draft=false --target "$SOURCE_SHA"
           else
-            gh release create nightly dist/salp-windows-x64-nightly.zip dist/SHA256SUMS \
+            gh release create nightly dist/* \
               --title 'salp nightly' --notes-file release-notes.md \
               --prerelease --latest=false --verify-tag --target "$SOURCE_SHA"
           fi

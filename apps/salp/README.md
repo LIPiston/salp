@@ -20,13 +20,27 @@ python3 apps/salp/tool/measure.py linux-release python3 tool/run.py flutter buil
 
 Linux 产物 `build/linux/x64/release/bundle/` 需要整个目录。它动态链接本机 GTK、Secret Service 和 FreeRDP 依赖，并非独立静态可执行文件。
 
-## Android arm64
+## Linux nightly 安装包
+
+`.github/workflows/linux.yml` 在 Ubuntu 22.04 上构建 x86_64 应用，将固定 FreeRDP 3.33.1、OpenSSL 3 和串口运行库放入应用私有目录，生成 `.deb`、pacman `.pkg.tar.zst` 和 `.flatpak`。原生包需要 glibc 2.35+、GTK3、libsecret 和可用的 Secret Service（例如 GNOME Keyring）。安装命令：
+
+```sh
+sudo apt install ./salp-linux-x64-nightly.deb
+sudo pacman -U salp-linux-x64-nightly.pkg.tar.zst
+flatpak install --user ./salp-linux-x64-nightly.flatpak
+```
+
+按发行版选择其中一种。Flatpak 使用 GNOME 49 runtime，允许网络、显示、SSH agent、Secret Service、主目录及设备访问；本地终端在沙箱内运行。CI 会实际安装 deb、pacman 包并检查依赖，启动 deb 与 Flatpak 应用检查窗口。
+
+## Android arm64-v8a / x86_64
 
 复用 Android SDK 36、NDK 28.2.13676358，最低 Android API 24。原生 FreeRDP/OpenSSL 构建需要现有 CMake、Ninja、Make、Perl，脚本不会安装系统包：
 
 ```sh
-python3 apps/salp/tool/build_android_rdp.py
-python3 apps/salp/tool/measure.py android-arm64 python3 tool/run.py flutter build apk --release --target-platform android-arm64
+python3 apps/salp/tool/build_android_rdp.py --abi arm64-v8a
+python3 apps/salp/tool/run.py flutter build apk --release --target-platform android-arm64 --split-per-abi
+python3 apps/salp/tool/build_android_rdp.py --abi x86_64
+python3 apps/salp/tool/run.py flutter build apk --release --target-platform android-x64 --split-per-abi
 python3 apps/salp/tool/storage.py
 # 已启动独立模拟器时，可运行：
 python3 apps/salp/tool/verify_android.py --serial emulator-5580
@@ -34,9 +48,9 @@ python3 apps/salp/tool/verify_android_saf.py --serial emulator-5580
 python3 apps/salp/tool/verify_android_lock.py --serial emulator-5580
 ```
 
-原生脚本下载固定版本、验证 SHA-256、用两个作业编译并裁剪动态库，输出 `android/app/src/main/jniLibs/arm64-v8a/`。编译缓存、源码与压缩包均复用隔离目录；脚本支持 `--jobs` 和 `--rebuild-openssl`。源码哈希及产物清单见 [native/android-sources.json](native/android-sources.json)。三个库按 16 KiB 页面对齐，OpenSSL 静态链接，未启用设备/音视频重定向。
+原生脚本下载固定版本、验证 SHA-256、编译并裁剪动态库，输出 `android/app/src/main/jniLibs/<ABI>/`，每个 ABI 独立缓存及记录 `salp-native-build.json`。支持 `--jobs` 和 `--rebuild-openssl`。三个库按 16 KiB 页面对齐，OpenSSL 静态链接，未启用设备/音视频重定向。CI 检查 APK 内每个 ELF 的架构、原生库完整性、APK 签名及 16 KiB 对齐。
 
-APK 为 `build/app/outputs/flutter-apk/app-release.apk`，当前使用开发签名。已在 Android36 模拟器通过 arm64转译验证凭据重启保存、RDP证书/画面/键盘/触控、SAF实际文档流与进程死亡恢复、系统锁屏。真实Android设备、第三方文档提供器和Windows/xrdp认证仍待完成，不能当成发布验收。Windows CI 已完成原生构建和运行检查，下载见下节。
+分架构 APK 为 `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` 和 `app-x86_64-release.apk`。本地默认使用 debug 签名；nightly 使用 `SALP_ANDROID_KEYSTORE`（base64 PKCS12）和 `SALP_ANDROID_KEYSTORE_PASSWORD` 两个 GitHub Secrets，别名 `salp-nightly`。该专用密钥保持不变，供后续 nightly 覆盖升级；从其他签名的本地开发包切换时需先卸载旧包。已在 Android36 模拟器通过 arm64转译验证凭据重启保存、RDP证书/画面/键盘/触控、SAF实际文档流与进程死亡恢复、系统锁屏。真实Android设备、第三方文档提供器和Windows/xrdp认证仍待完成，不能当成发布验收。
 
 ## Windows x64（GitHub Actions）
 
@@ -45,6 +59,8 @@ APK 为 `build/app/outputs/flutter-apk/app-release.apk`，当前使用开发签�
 已验证的[第9次构建及产物](https://github.com/LIPiston/salp/actions/runs/45556813920)提供约19.2MB ZIP、解压约45.2MB（包括许可和源码）。
 
 成功后下载 `salp-windows-x64-<运行编号>` artifact，解压其中 ZIP 并保留整个目录，运行 `salp.exe`。开发包未签名；`build-info.json` 记录工具/依赖版本与目录体积，`windows-smoke.json` 记录原生加载和启动检查。日志 artifact 保留14天。Windows SSH agent 命名管道仍在开发，桌面锁定/实际RDP服务端/硬件需要后续运行验证。
+
+同一 artifact 还包含 Inno Setup 生成的 `salp-windows-x64-nightly-setup.exe`，按用户安装到 `%LOCALAPPDATA%/Programs/salp`，创建开始菜单入口，并可选桌面快捷方式。CI 使用同一便携目录生成安装程序，再静默安装、运行安装后的应用及卸载验证。ZIP 和安装程序均包含许可与对应源码。
 
 `tool/build_windows.ps1` 是同一构建入口：Windows 本机构建需要 Visual Studio 2022 C++ 桌面组件、Flutter、Git、Python 和固定版本 vcpkg；工作流提供这些依赖。FreeRDP/WinPR 使用 vcpkg 的3.32.2版本，与Linux/Android当前3.33.1不同，核心API相同但Windows互通仍待CI与实机证明。串口库0.1.2源码和所有原生许可、当前应用源码归档随开发包分发。
 

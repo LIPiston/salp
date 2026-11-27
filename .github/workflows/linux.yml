@@ -1,0 +1,78 @@
+name: Linux packages
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Install Linux build and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
+            libsecret-1-dev libssl-dev libserialport-dev zlib1g-dev \
+            flatpak zstd xvfb xdotool dbus-x11 gnome-keyring desktop-file-utils
+      - uses: ./.github/actions/setup-flutter
+        with:
+          target: linux
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .ci/linux-native
+          key: ubuntu-22.04-native-${{ hashFiles('apps/salp/tool/build_linux_native.sh') }}
+      - name: Build pinned Linux native dependencies
+        run: bash apps/salp/tool/build_linux_native.sh
+      - name: Analyze, test and build Linux release
+        run: |
+          export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.ci/linux-native/prefix/lib/pkgconfig"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/.ci/linux-native/prefix/lib"
+          cd apps/salp
+          flutter pub get --enforce-lockfile
+          flutter analyze --no-pub
+          flutter test --no-pub
+          flutter build linux --release
+      - name: Install Flatpak runtime
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive flathub org.gnome.Platform//49
+      - name: Package deb, pacman and Flatpak
+        run: |
+          version="$(sed -n 's/^version: \([^+]*\).*/\1/p' apps/salp/pubspec.yaml)"
+          python3 apps/salp/tool/package_linux.py --prepare \
+            --version "$version.r$(date -u +%Y%m%d).$GITHUB_RUN_NUMBER"
+          desktop-file-validate apps/salp/packaging/linux/dev.salp.salp.desktop
+      - name: Install and launch the Debian package
+        run: |
+          sudo dpkg -i .ci/dist/salp-linux-x64-nightly.deb
+          dbus-run-session -- xvfb-run -a python3 apps/salp/tool/verify_linux.py --bundle /usr/lib/salp
+      - name: Install and launch the Flatpak bundle
+        run: |
+          flatpak install --user -y --noninteractive .ci/dist/salp-linux-x64-nightly.flatpak
+          dbus-run-session -- xvfb-run -a python3 apps/salp/tool/verify_linux.py --flatpak
+      - name: Verify pacman package metadata and payload
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE/.ci/dist:/packages:ro" archlinux:base \
+            bash -euc 'pacman -Sy --noconfirm gtk3 libsecret; pacman -U --noconfirm /packages/*.pkg.tar.zst; test -x /usr/bin/salp; LD_LIBRARY_PATH=/usr/lib/salp/lib ldd /usr/lib/salp/salp | tee /tmp/dependencies; ! grep -q "not found" /tmp/dependencies'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: salp-nightly-linux-x64
+          path: .ci/dist/*
+          if-no-files-found: error
+          retention-days: 14

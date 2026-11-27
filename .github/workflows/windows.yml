@@ -20,10 +20,12 @@ on:
     paths:
       - 'apps/salp/**'
       - '.github/workflows/windows.yml'
+      - '.github/actions/**'
   pull_request:
     paths:
       - 'apps/salp/**'
       - '.github/workflows/windows.yml'
+      - '.github/actions/**'
 
 permissions:
   contents: read
@@ -106,11 +108,17 @@ jobs:
         run: |
           & apps/salp/tool/build_windows.ps1 -VcpkgRoot .ci/vcpkg -Stage Package 2>&1 |
             Tee-Object -FilePath windows-build.log -Append
-      - name: Upload portable development build
+      - name: Build and verify Windows installer
+        run: |
+          & apps/salp/tool/package_windows.ps1 2>&1 |
+            Tee-Object -FilePath windows-build.log -Append
+      - name: Upload Windows packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ inputs.artifact-name || format('salp-windows-x64-{0}', github.run_number) }}
-          path: .ci/native/salp-windows-x64.zip
+          path: |
+            .ci/native/salp-windows-x64.zip
+            .ci/native/salp-windows-x64-nightly-setup.exe
           if-no-files-found: error
           retention-days: 14
       - name: Upload build diagnostics
