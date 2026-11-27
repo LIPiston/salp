@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:salp/core/host.dart';
 import 'package:salp/core/vnc.dart';
 import 'package:salp/ui/vnc_view.dart';
+import 'package:xterm/ui.dart';
 
 // Observe the view's protocol boundary; actual RFB/RDP transport has its own
 // loopback integration fixtures. Never send input to a real user's desktop.
@@ -38,12 +39,20 @@ void main() {
           home: Scaffold(body: VncView(session: session)),
         ),
       );
-      await tester.runAsync(
-        () async => Future<void>.delayed(const Duration(milliseconds: 20)),
-      );
-      await tester.pump();
+      // Image decoding happens outside the fake clock. Wait for the input
+      // surface, rather than assuming a loaded CI runner finishes in 20 ms.
+      for (var attempt = 0;
+          attempt < 100 && find.byType(CustomTextEdit).evaluate().isEmpty;
+          attempt++) {
+        await tester.runAsync(
+          () async => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.byType(CustomTextEdit), findsOneWidget);
       await tester.tap(find.byTooltip('显示键盘'));
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(tester.testTextInput.hasAnyClients, isTrue);
       tester.testTextInput.updateEditingValue(
         const TextEditingValue(
           text: '  zhong',

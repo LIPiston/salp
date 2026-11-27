@@ -32,6 +32,7 @@ def stage(bundle, root, prefix):
         '#!/bin/sh\n'
         'app_dir="$(CDPATH= cd -- "$(dirname -- "$(readlink -f -- "$0")")/../lib/salp" && pwd)"\n'
         'export LD_LIBRARY_PATH="$app_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
+        'export OPENSSL_MODULES="$app_dir/lib/ossl-modules"\n'
         'exec "$app_dir/salp" "$@"\n'
     )
     launcher.chmod(0o755)
@@ -58,6 +59,10 @@ def prepare_bundle(bundle):
         if not matches:
             raise RuntimeError(f'Missing runtime library: {soname}')
         copy(Path(matches[0]).resolve(), bundle / 'lib' / soname)
+    # FreeRDP loads the OpenSSL legacy provider for NTLM. A host's OpenSSL 4
+    # module cannot be loaded into the private OpenSSL 3 library.
+    copy(Path('/usr/lib/x86_64-linux-gnu/ossl-modules/legacy.so'),
+         bundle / 'lib/ossl-modules/legacy.so')
     licenses = bundle / 'licenses'
     copy(REPO / 'LICENSE', licenses / 'salp.txt')
     copy(APP / 'THIRD-PARTY.md', licenses / 'THIRD-PARTY.md')

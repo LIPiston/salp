@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check library resolution and launch the installed Linux/Flatpak package."""
 import argparse
+import ctypes
 import os
 from pathlib import Path
 import subprocess
@@ -22,11 +23,18 @@ with tempfile.TemporaryDirectory(prefix='salp-linux-smoke-') as folder:
     else:
         bundle = args.bundle.resolve(strict=True)
         env['LD_LIBRARY_PATH'] = str(bundle / 'lib')
+        env['OPENSSL_MODULES'] = str(bundle / 'lib/ossl-modules')
         for library in [bundle / 'salp', *list((bundle / 'lib').glob('*.so*'))]:
             result = subprocess.run(['ldd', str(library)], env=env, text=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if result.returncode or 'not found' in result.stdout:
                 raise RuntimeError(f'Unresolved dependencies: {library}\n{result.stdout}')
+        os.environ['OPENSSL_MODULES'] = env['OPENSSL_MODULES']
+        crypto = ctypes.CDLL(str(bundle / 'lib/libcrypto.so.3'))
+        crypto.OSSL_PROVIDER_load.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        crypto.OSSL_PROVIDER_load.restype = ctypes.c_void_p
+        if not crypto.OSSL_PROVIDER_load(None, b'legacy'):
+            raise RuntimeError('Bundled OpenSSL legacy provider failed to load')
         command = [str(bundle / 'salp')]
     with (Path(folder) / 'startup.log').open('w+') as log:
         process = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
