@@ -25,7 +25,11 @@ def copy(source, target):
 
 def stage(bundle, root, prefix):
     target = root / prefix / 'lib/salp'
-    shutil.copytree(bundle, target, symlinks=True)
+    # path_provider_android depends on jni, whose Linux ffiPlugin emits
+    # libdartjni.so and needs libjvm.so. Desktop Linux uses path_provider_linux
+    # and does not use JNI.
+    shutil.copytree(bundle, target, symlinks=True,
+                    ignore=shutil.ignore_patterns('libdartjni.so'))
     launcher = root / prefix / 'bin/salp'
     launcher.parent.mkdir(parents=True, exist_ok=True)
     launcher.write_text(

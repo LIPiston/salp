@@ -48,6 +48,8 @@ jobs:
           flutter analyze --no-pub
           flutter test --no-pub
           flutter build linux --release
+      - name: Test Linux packaging script
+        run: python3 -m unittest discover -s apps/salp/tool -p 'test_package_linux.py'
       - name: Install Flatpak runtime
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
